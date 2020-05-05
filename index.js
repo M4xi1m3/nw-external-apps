@@ -87,7 +87,46 @@ angular.module('nwas', ['ngSanitize', 'pascalprecht.translate']).controller('mai
         });
     });
   }
+/*
+  let inlineImage = function inlineImage(app) {
+    let img = new Image();
+    img.src = "apps/" + app.name + "/icon.png";
 
+    let canvas = document.createElement('canvas');
+    
+    canvas.width = img.width;
+    canvas.height = img.height;
+    
+    let context = canvas.getContext('2d');
+    context.drawImage(img, 0, 0);
+    let imgd = context.getImageData(0, 0, img.width, img.height);
+    
+    let icon_rgba32 = new Uint32Array(imgd.data.buffer);
+    let icon_rgba8888 = new Uint8Array(imgd.data.buffer);
+    let icon_rgb565 = new Uint16Array(icon_rgba32.length);
+    for(let i = 0; i < icon_rgba32.length; i++) {
+      let r = icon_rgba8888[i * 4 + 0] / 255;
+      let g = icon_rgba8888[i * 4 + 1] / 255;
+      let b = icon_rgba8888[i * 4 + 2] / 255;
+      let a = icon_rgba8888[i * 4 + 3] / 255;
+      
+      let br = r * a + 1 * (1 - a);
+      let bg = g * a + 1 * (1 - a);
+      let bb = b * a + 1 * (1 - a);
+      
+      let ir = Math.round(br * 0xFF);
+      let ig = Math.round(bg * 0xFF);
+      let ib = Math.round(bb * 0xFF);
+      
+      icon_rgb565[i] = (ir >> 3) << 11 | (ig >> 2) << 5 | (ib >> 3);
+    }
+    
+    let final_data = new Uint8Array(icon_rgb565.buffer, icon_rgb565.byteOffset, icon_rgb565.byteLength);
+    let compressed = lz4.makeBlock(final_data);
+    
+    return compressed;
+  }
+*/
   let buildArchive = async function buildArchive(applications, files) {
     if(applications.length == 0 && files.length == 0) {
       return new Promise(function(resolve, reject) {
@@ -97,6 +136,8 @@ angular.module('nwas', ['ngSanitize', 'pascalprecht.translate']).controller('mai
       let linkerScript = await loadLinkerScript();
       let address = 0;
       let tar = new tarball.TarWriter();
+      
+      let icon_support = document.getElementById("check-icons-support").checked;
 
       for(let i = 0; i < applications.length; i++) {
         let app = applications[i];
@@ -108,6 +149,16 @@ angular.module('nwas', ['ngSanitize', 'pascalprecht.translate']).controller('mai
         address += 0x200 * Math.floor((binary.length + 1023) / 0x200);
         console.log("Taring", app.name)
         tar.addFileArrayBuffer(app.name, binary, {mode: "775"});
+        
+        if (icon_support) {
+          let resp = await $http.get("apps/" + app.name + "/app.icon", {responseType: "arraybuffer"});
+          
+          files.push({
+              name: app.name + ".icon",
+              binary: resp.data
+          });
+        }
+        
       }
 
       for(let i = 0; i < files.length; i++) {
@@ -303,6 +354,7 @@ angular.module('nwas', ['ngSanitize', 'pascalprecht.translate']).controller('mai
       DFU_COPYING: "Copying data",
       DFU_WROTE: "Done",
       OR: "or",
+      CHECK_ICONS: "Enable experimental icons support.",
     })
     .translations('fr', {
       TITLE: 'Dépôt d\'application N110 non officiel',
@@ -327,6 +379,7 @@ angular.module('nwas', ['ngSanitize', 'pascalprecht.translate']).controller('mai
       DFU_COPYING: "Copie des fichiers",
       DFU_WROTE: "Terminé",
       OR: "ou",
+      CHECK_ICONS: "Activer le support des icons (Expérimental)",
     })
     .registerAvailableLanguageKeys(['en', 'fr'], {
       'en_*': 'en',

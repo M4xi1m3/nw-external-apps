@@ -1,4 +1,4 @@
-apps.tar: apps/KhiCAS/app.elf apps/Periodic/app.elf apps/Nofrendo/app.elf apps/Peanut-GB/app.elf
+apps.tar: apps/KhiCAS/app.elf apps/Periodic/app.elf apps/Nofrendo/app.elf apps/Peanut-GB/app.elf 
 	./archive $@ $^
 
 flash: apps.tar

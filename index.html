@@ -77,6 +77,11 @@ Copyright (C) 2019 Damien Nicolet
           </div>
 
           <div class="card p-2">
+            <div class="custom-control custom-checkbox">
+              <input type="checkbox" class="custom-control-input" id="check-icons-support">
+              <label class="custom-control-label" for="check-icons-support">{{ 'CHECK_ICONS' | translate }}</label>
+            </div>
+            <br/>
             <button class="btn btn-primary btn-lg btn-block" ng-click="upload()" translate="INSTALL"></button>
           </div>
         </div>
@@ -141,6 +146,9 @@ Copyright (C) 2019 Damien Nicolet
     <script src="libs/webdfu/dfu-util/dfuse.js"></script>
     <script src="libs/angularjs/angular-sanitize.min.js"></script>
     <script src="libs/angular-translate/angular-translate.min.js"></script>
+    <script src="libs/lz4js/util.js"></script>
+    <script src="libs/lz4js/xxh32.js"></script>
+    <script src="libs/lz4js/lz4.js"></script>
     <script src="index.js"></script>
     <script src="apps/apps.js"></script>
   </body>
