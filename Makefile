@@ -1,4 +1,4 @@
-apps.tar: apps/KhiCAS/app.elf apps/Periodic/app.elf apps/Nofrendo/app.elf apps/Peanut-GB/app.elf 
+apps.tar: apps/KhiCAS/app.elf apps/Periodic/app.elf apps/Nofrendo/app.elf apps/Peanut-GB/app.elf apps/HexEdit/app.elf 
 	./archive $@ $^
 
 flash: apps.tar
@@ -19,6 +19,9 @@ apps/KhiCAS/app.elf: api/libapi.a
 apps/Nofrendo/app.elf: api/libapi.a
 	make -C apps/Nofrendo
 
+apps/Peanut-GB/app.elf: api/libapi.a
+	make -C apps/HexEdit
+
 clean:
 	rm -f apps.tar
 	make -C api clean
@@ -26,4 +29,5 @@ clean:
 	make -C apps/KhiCAS clean
 	make -C apps/Nofrendo clean
 	make -C apps/Peanut-GB clean
+	make -C apps/HexEdit clean
 
