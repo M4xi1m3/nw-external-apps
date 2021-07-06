@@ -47,6 +47,13 @@ Copyright (C) 2019 Damien Nicolet
           </h4>
           <ul class="list-group mb-3">
 
+            <li class="list-group-item d-flex justify-content-between lh-condensed" ng-if="wallpaper != null">
+              <div class="my-auto">
+                <h6 class="my-0"><img ng-src="{{wallpaper.imagesrc}}" alt="" width="40" height="28" class="mr-3">{{wallpaper.name}}</h6>
+                </div>
+              <span><button class="btn btn-primary btn-sm" ng-click="removeWallpaper()" translate="REMOVE"></button></span>
+            </li>
+
             <li class="list-group-item d-flex justify-content-between lh-condensed" ng-repeat="app in selectedApps">
               <div class="my-auto">
                 <h6 class="my-0"><img ng-src="apps/{{app.name}}/icon.png" alt="" width="26" height="26" class="mr-3">{{app.name}}</h6>
@@ -87,6 +94,16 @@ Copyright (C) 2019 Damien Nicolet
         </div>
 
         <div class="col-md-8 order-md-1">
+          <h4 class="mb-3" translate="WALLPAPER"></h4>
+          <div class="card p-2 mb-3">
+            <div>
+              <div class="custom-file">
+                <input id="wallpaper-file-input" type="file" accept="image/png" class="custom-file-input" lang="{{locale}}" ng-wallpaper-select>
+                <label class="custom-file-label" id="wallpaper-name" translate="WALLPAPER_FILE"></label>
+                <div class="invalid-feedback" translate="WALLPAPER_FILE_SIZE_ERROR"></div>
+              </div> 
+            </div>
+          </div>
           <h4 class="mb-3" translate="AVAILABLE_APPLICATIONS"></h4>
             <div class="row pb-3">
               <div class="col-md-12">

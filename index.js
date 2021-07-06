@@ -20,6 +20,7 @@ Copyright (C) 2019 Damien Nicolet
 angular.module('nwas', ['ngSanitize', 'pascalprecht.translate']).controller('main', function($scope, $http, apps, $translate) {
 
   $scope.locale = $translate.use();
+  $scope.wallpaper = null;
   $scope.apps = apps;
   $scope.selectedApps = [];
   $scope.customFiles = [];
@@ -35,6 +36,40 @@ angular.module('nwas', ['ngSanitize', 'pascalprecht.translate']).controller('mai
     }
   };
 
+  $scope.setWallpaper = function setWallpaper(el) {
+    let file = el[0].files[0];
+    let reader = new FileReader();
+    
+    reader.addEventListener("load", function() {
+        let img = document.createElement('img');
+        img.onload = function () { 
+          $scope.$apply(function () {
+            if(img.width == 320 && img.height == 222) {
+              $scope.wallpaper = {name: file.name, imagesrc:reader.result};
+              document.getElementById("wallpaper-name").innerText = file.name;
+              document.getElementById("wallpaper-file-input").classList.remove("is-invalid");
+            }
+            else {
+              document.getElementById("wallpaper-file-input").classList.add("is-invalid");
+            }
+          });
+        };
+        img.src = reader.result;
+    }, false);
+
+    if (file) {
+      reader.readAsDataURL(file);
+    }
+  };
+
+  $scope.removeWallpaper = function removeWallpaper() {
+    $scope.wallpaper = null;
+    document.getElementById("wallpaper-file-input").value = null;
+    $translate("WALLPAPER_FILE").then(function (translatedValue) {
+      document.getElementById("wallpaper-name").innerText = translatedValue;
+    });
+  };
+  
   $scope.removeApplication = function removeApplication(app) {
     let index = $scope.selectedApps.indexOf(app);
     if(index >= 0) {
@@ -127,8 +162,56 @@ angular.module('nwas', ['ngSanitize', 'pascalprecht.translate']).controller('mai
     return compressed;
   }
 */
-  let buildArchive = async function buildArchive(applications, files) {
-    if(applications.length == 0 && files.length == 0) {
+  let fromPNGToOBM = function fromPNGToOBM(dataURL) {
+    //OBM (Omega Bit Map) is the wallpaper format of Omega
+    let img = new Image();
+    img.src = dataURL;
+
+    let canvas = document.createElement('canvas');
+    
+    canvas.width = img.width;
+    canvas.height = img.height;
+
+    let img_header32 = new Uint32Array(3);
+    img_header32[0] = 466512775; //We use a "random" magic number
+    img_header32[1] = canvas.width;
+    img_header32[2] = canvas.height;
+    
+    let context = canvas.getContext('2d');
+    context.drawImage(img, 0, 0);
+    let imgd = context.getImageData(0, 0, img.width, img.height);
+    
+    let img_rgba32 = new Uint32Array(imgd.data.buffer);
+    let img_rgba8888 = new Uint8Array(imgd.data.buffer);
+    let img_rgb565 = new Uint16Array(img_rgba32.length);
+    for(let i = 0; i < img_rgba32.length; i++) {
+      let r = img_rgba8888[i * 4 + 0] / 255;
+      let g = img_rgba8888[i * 4 + 1] / 255;
+      let b = img_rgba8888[i * 4 + 2] / 255;
+      let a = img_rgba8888[i * 4 + 3] / 255;
+      
+      let br = r * a + 1 * (1 - a);
+      let bg = g * a + 1 * (1 - a);
+      let bb = b * a + 1 * (1 - a);
+      
+      let ir = Math.round(br * 0xFF);
+      let ig = Math.round(bg * 0xFF);
+      let ib = Math.round(bb * 0xFF);
+      
+      img_rgb565[i] = (ir >> 3) << 11 | (ig >> 2) << 5 | (ib >> 3);
+    }
+    
+
+    let img_header8 = new Uint8Array(img_header32.buffer, img_header32.byteOffset, img_header32.byteLength);
+    let img_data = new Uint8Array(img_rgb565.buffer, img_rgb565.byteOffset, img_rgb565.byteLength);
+    
+    let final_data = Uint8Array.from([...img_header8, ...img_data]);
+
+    return final_data;
+  }
+
+  let buildArchive = async function buildArchive(applications, wallpaper, files) {
+    if(applications.length == 0 && files.length == 0 && wallpaper == null) {
       return new Promise(function(resolve, reject) {
         resolve(new Uint8Array(0x200));
       });
@@ -159,6 +242,16 @@ angular.module('nwas', ['ngSanitize', 'pascalprecht.translate']).controller('mai
           });
         }
         
+      }
+      if(wallpaper != null) {
+        console.log("Inling wallpaper");
+        $scope.$apply(function() {
+          $scope.lastAction = $translate.instant("ADDING") + " " + wallpaper.name;
+        });
+        files.push({
+          name: "wallpaper.obm",
+          binary: fromPNGToOBM(wallpaper.imagesrc)
+        });
       }
 
       for(let i = 0; i < files.length; i++) {
@@ -237,7 +330,7 @@ angular.module('nwas', ['ngSanitize', 'pascalprecht.translate']).controller('mai
         $scope.$apply(function() {
           $scope.uploading = true;
         });
-        let archive = await buildArchive($scope.selectedApps, $scope.customFiles);
+        let archive = await buildArchive($scope.selectedApps, $scope.wallpaper, $scope.customFiles);
         console.log("Archive", archive);
         await uploadFile(selectedDevice, "@External Flash /0x90200000/32*064Kg,64*064Kg", archive, false);
         $scope.$apply(function() {
@@ -329,6 +422,16 @@ angular.module('nwas', ['ngSanitize', 'pascalprecht.translate']).controller('mai
       })
     }
   }
+  
+}).directive("ngWallpaperSelect", function() {
+  return {
+    link: function($scope, el) {
+      el.bind("change", function(e) {
+        $scope.setWallpaper(el);
+      })
+    }
+  }
+
 }).config(function ($translateProvider) {
   $translateProvider
     .translations('en', {
@@ -342,6 +445,9 @@ angular.module('nwas', ['ngSanitize', 'pascalprecht.translate']).controller('mai
       REMOVE: 'Remove',
       CUSTOM_FILE: 'Custom file',
       INSTALL: 'Install',
+      WALLPAPER: "Wallpaper",
+      WALLPAPER_FILE: 'PNG file of size 320x222',
+      WALLPAPER_FILE_SIZE_ERROR: 'Error : the file is not the right size.',
       AVAILABLE_APPLICATIONS: 'Available applications',
       ADD: 'Add',
       ACKNOWLEDGMENTS: 'Acknowledgments',
@@ -367,6 +473,9 @@ angular.module('nwas', ['ngSanitize', 'pascalprecht.translate']).controller('mai
       REMOVE: 'Supprimer',
       CUSTOM_FILE: 'Fichier local',
       INSTALL: 'Installer',
+      WALLPAPER: 'Fond d\'écran',
+      WALLPAPER_FILE: 'Fichier PNG de taille 320x222',
+      WALLPAPER_FILE_SIZE_ERROR: 'Erreur : le fichier ne fait pas la bonne taile.',
       AVAILABLE_APPLICATIONS: 'Applications disponibles',
       ADD: 'Ajouter',
       ACKNOWLEDGMENTS: 'Remerciements',
